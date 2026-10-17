@@ -312,7 +312,7 @@ struct Counter {
 
 auto shared = proxy::make_shared<Counter, ICounter>();
 proxy::interface_view<ICounter> view = shared;
-proxy::interface_holder<ICounter> retained{view};
+proxy::interface_holder<ICounter> retained = view;
 
 assert(retained->count() == 42);
 ```
