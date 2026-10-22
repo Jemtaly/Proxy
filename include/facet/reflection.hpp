@@ -274,7 +274,7 @@ struct from_spec_def {
     template<meta::info Method, meta::info Member, class R, class... A>
     struct automatic_method_invoker_t<Method, Member, R(A...)> {
         R operator()(facets_type self, A... args) const {
-            vtable_type const *vt = fct::get<0>(self.vtables);
+            vtable_type const *vt = self.template vtable_at<0>();
             constexpr since_t since = get_method_since(Method);
             if constexpr (since.fallback != meta::info{}) {
                 if (vt->version < since.version) {
@@ -452,7 +452,7 @@ struct from_spec_def {
                     [:dispatcher:](typed_self, std::forward<A>(args)...);
                 }
             {
-                typed_facets_type typed_self(static_cast<Impl *>(self.data), self.rtti, self.vtables);
+                typed_facets_type typed_self(self);
                 return [:dispatcher:](typed_self, std::forward<A>(args)...);
             }
         };

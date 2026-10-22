@@ -248,6 +248,7 @@ concept upcastable_from = requires(vtable_t<From> const *vt) {
 };
 
 template<class To, class From>
+    requires upcastable_from<To, From>
 constexpr vtable_t<To> const *vtable_upcast_from(vtable_t<From> const *vt) noexcept {
     if (vt == nullptr) {
         return nullptr;
@@ -255,11 +256,15 @@ constexpr vtable_t<To> const *vtable_upcast_from(vtable_t<From> const *vt) noexc
     return vtable_upcast_customizer<To, From>()(vt);
 }
 
+template<class To>
+struct vtable_upcast_customizer<To, To> {
+    constexpr vtable_t<To> const *operator()(vtable_t<To> const *vt) const noexcept {
+        return vt;
+    }
+};
+
 template<class To, class From>
     requires([] {
-        if constexpr (std::is_same_v<To, From>) {
-            return true;
-        }
         template for (constexpr direct_base_t base : direct_bases_v<From>) {
             using Base = typename[:base.type:];
             if constexpr (upcastable_from<To, Base>) {
@@ -270,9 +275,6 @@ template<class To, class From>
     }())
 struct vtable_upcast_customizer<To, From> {
     constexpr vtable_t<To> const *operator()(vtable_t<From> const *vt) const noexcept {
-        if constexpr (std::is_same_v<To, From>) {
-            return vt;
-        }
         template for (constexpr direct_base_t base : direct_bases_v<From>) {
             using Base = typename[:base.type:];
             if constexpr (upcastable_from<To, Base>) {
@@ -291,6 +293,7 @@ concept queryable = requires(type_info const *rtti, void *data) {
 };
 
 template<class To>
+    requires queryable<To>
 constexpr vtable_t<To> const *vtable_query_with(type_info const *rtti, void *data) noexcept {
     if (data == nullptr) {
         return nullptr;
@@ -467,13 +470,7 @@ struct typed_facets {
     using data_type = Impl;
     using vtable_tuple = fct::tuple<vtable_t<Faces> const *...>;
 
-    Impl *data = nullptr;
-    type_info const *rtti = nullptr;
-    vtable_tuple vtables = {};
-
     constexpr typed_facets() noexcept = default;
-
-    constexpr typed_facets(Impl *d, type_info const *r, vtable_tuple t) noexcept : data(d), rtti(r), vtables(t) {}
 
     constexpr explicit typed_facets(Impl *d, type_info const *r, vtable_t<Faces> const *...vs) noexcept : data(d), rtti(r), vtables(vs...) {}
 
@@ -489,7 +486,10 @@ struct typed_facets {
     static constexpr bool is_upcastable_or_queryable = is_upcastable<To> || is_queryable<To>;
 
     template<class Base>
-    static constexpr bool is_convertible = std::is_same_v<Impl, Base> || std::is_same_v<Base, void>;
+    static constexpr bool is_implicit_convertible = std::is_same_v<Base, Impl> || std::is_same_v<Base, void>;
+
+    template<class Base>
+    static constexpr bool is_convertible = is_implicit_convertible<Base> || std::is_same_v<Impl, void>;
 
     // ---- vtable casts -----------------------------------------------------
 
@@ -499,7 +499,7 @@ struct typed_facets {
         template for (constexpr std::size_t K : std::views::iota(0uz, sizeof...(Faces))) {
             using Face = Faces...[K];
             if constexpr (upcastable_from<To, Face>) {
-                vtable_t<Face> const *vt = fct::get<K>(vtables);
+                vtable_t<Face> const *vt = vtable_at<K>();
                 return vtable_upcast_from<To, Face>(vt);
             }
         }
@@ -525,12 +525,21 @@ struct typed_facets {
 
     template<class Base, class... Tos>
         requires(is_convertible<Base> && (is_upcastable_or_queryable<Tos> && ...) && !std::is_same_v<typed_facets<Base, Tos...>, typed_facets>)
-    explicit(!(is_upcastable<Tos> && ...))
+    explicit(!(is_implicit_convertible<Base> && (is_upcastable<Tos> && ...)))
     operator typed_facets<Base, Tos...>() const noexcept {
-        return typed_facets<Base, Tos...>(data, rtti, vtable_upcast_or_query<Tos>()...);
+        return typed_facets<Base, Tos...>(static_cast<Base *>(data), rtti, vtable_upcast_or_query<Tos>()...);
     }
 
-    // ---- utilities --------------------------------------------------------
+    // ---- accessors ---------------------------------------------------------
+
+    auto *get() const noexcept {
+        return data;
+    }
+
+    template<std::size_t K>
+    auto const *vtable_at() const noexcept {
+        return fct::get<K>(vtables);
+    }
 
     explicit operator bool() const noexcept {
         return data != nullptr &&
@@ -554,9 +563,10 @@ struct typed_facets {
         return reinterpret_cast<facade<typed_facets, Face> const *>(this);
     }
 
-    auto *get() const noexcept {
-        return data;
-    }
+private:
+    Impl *data = nullptr;
+    type_info const *rtti = nullptr;
+    vtable_tuple vtables = {};
 };
 }
 
@@ -574,6 +584,7 @@ concept has_type_info_for = requires {
 };
 
 template<class Impl, class... Faces>
+    requires has_type_info_for<Impl, Faces...>
 inline constexpr type_info const *type_info_for_v = type_info_for<Impl, Faces...>::value;
 
 template<class Impl, class Face>
@@ -585,6 +596,7 @@ concept has_vtable_for = requires {
 };
 
 template<class Impl, class Face>
+    requires has_vtable_for<Impl, Face>
 inline constexpr vtable_t<Face> const *vtable_for_v = vtable_for<Impl, Face>::value;
 
 template<class... Faces, class Impl>

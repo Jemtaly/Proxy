@@ -76,8 +76,8 @@ struct unique_typed_facets {
     unique_typed_facets(unique_typed_facets &&other) noexcept : handle_(other.handle_), control_(std::exchange(other.control_, nullptr)) {}
 
     template<class Base, class... Tos>
-        requires(handle_type::template is_convertible<Base> && (handle_type::template is_upcastable_or_queryable<Tos> && ...) && !std::is_same_v<unique_typed_facets<Base, Tos...>, unique_typed_facets>)
-    explicit(!(handle_type::template is_upcastable<Tos> && ...))
+        requires(std::is_constructible_v<typed_facets<Base, Tos...>, handle_type> && !std::is_same_v<unique_typed_facets<Base, Tos...>, unique_typed_facets>)
+    explicit(!std::is_convertible_v<handle_type, typed_facets<Base, Tos...>>)
     operator unique_typed_facets<Base, Tos...>() && noexcept {
         return unique_typed_facets<Base, Tos...>(typed_facets<Base, Tos...>(handle_), std::exchange(control_, nullptr));
     }
@@ -96,6 +96,19 @@ struct unique_typed_facets {
         return *this;
     }
 
+    auto handle() const noexcept {
+        return handle_;
+    }
+
+    auto *get() const noexcept {
+        return handle_.get();
+    }
+
+    template<std::size_t K>
+    auto const *vtable_at() const noexcept {
+        return handle_.template vtable_at<K>();
+    }
+
     explicit operator bool() const noexcept {
         return static_cast<bool>(handle_) && control_ != nullptr;
     }
@@ -111,14 +124,6 @@ struct unique_typed_facets {
     template<class Face>
     auto *as() const noexcept {
         return handle_.template as<Face>();
-    }
-
-    auto *get() const noexcept {
-        return handle_.get();
-    }
-
-    auto handle() const noexcept {
-        return handle_;
     }
 };
 
@@ -203,17 +208,30 @@ struct borrowed_typed_facets {
     borrowed_typed_facets(handle_type handle, detail::shared_control *control) noexcept : handle_(handle), control_(control) {}
 
     template<class Base, class... Tos>
-        requires(handle_type::template is_convertible<Base> && (handle_type::template is_upcastable_or_queryable<Tos> && ...) && !std::is_same_v<borrowed_typed_facets<Base, Tos...>, borrowed_typed_facets>)
-    explicit(!(handle_type::template is_upcastable<Tos> && ...))
+        requires(std::is_constructible_v<typed_facets<Base, Tos...>, handle_type> && !std::is_same_v<borrowed_typed_facets<Base, Tos...>, borrowed_typed_facets>)
+    explicit(!std::is_convertible_v<handle_type, typed_facets<Base, Tos...>>)
     operator borrowed_typed_facets<Base, Tos...>() const & noexcept {
         return borrowed_typed_facets<Base, Tos...>(typed_facets<Base, Tos...>(handle_), control_);
     }
 
     template<class Base, class... Tos>
-        requires(handle_type::template is_convertible<Base> && (handle_type::template is_upcastable_or_queryable<Tos> && ...))
-    explicit(!(handle_type::template is_upcastable<Tos> && ...))
+        requires(std::is_constructible_v<typed_facets<Base, Tos...>, handle_type>)
+    explicit(!std::is_convertible_v<handle_type, typed_facets<Base, Tos...>>)
     operator shared_typed_facets<Base, Tos...>() const & noexcept {
         return shared_typed_facets<Base, Tos...>(typed_facets<Base, Tos...>(handle_), detail::add_ref(control_));
+    }
+
+    auto handle() const noexcept {
+        return handle_;
+    }
+
+    auto *get() const noexcept {
+        return handle_.get();
+    }
+
+    template<std::size_t K>
+    auto const *vtable_at() const noexcept {
+        return handle_.template vtable_at<K>();
     }
 
     explicit operator bool() const noexcept {
@@ -231,14 +249,6 @@ struct borrowed_typed_facets {
     template<class Face>
     auto *as() const noexcept {
         return handle_.template as<Face>();
-    }
-
-    auto *get() const noexcept {
-        return handle_.get();
-    }
-
-    auto handle() const noexcept {
-        return handle_;
     }
 };
 
@@ -258,22 +268,22 @@ struct shared_typed_facets {
     shared_typed_facets(shared_typed_facets &&other) noexcept : handle_(other.handle_), control_(std::exchange(other.control_, nullptr)) {}
 
     template<class Base, class... Tos>
-        requires(handle_type::template is_convertible<Base> && (handle_type::template is_upcastable_or_queryable<Tos> && ...) && !std::is_same_v<shared_typed_facets<Base, Tos...>, shared_typed_facets>)
-    explicit(!(handle_type::template is_upcastable<Tos> && ...))
+        requires(std::is_constructible_v<typed_facets<Base, Tos...>, handle_type> && !std::is_same_v<shared_typed_facets<Base, Tos...>, shared_typed_facets>)
+    explicit(!std::is_convertible_v<handle_type, typed_facets<Base, Tos...>>)
     operator shared_typed_facets<Base, Tos...>() const & noexcept {
         return shared_typed_facets<Base, Tos...>(typed_facets<Base, Tos...>(handle_), detail::add_ref(control_));
     }
 
     template<class Base, class... Tos>
-        requires(handle_type::template is_convertible<Base> && (handle_type::template is_upcastable_or_queryable<Tos> && ...) && !std::is_same_v<shared_typed_facets<Base, Tos...>, shared_typed_facets>)
-    explicit(!(handle_type::template is_upcastable<Tos> && ...))
+        requires(std::is_constructible_v<typed_facets<Base, Tos...>, handle_type> && !std::is_same_v<shared_typed_facets<Base, Tos...>, shared_typed_facets>)
+    explicit(!std::is_convertible_v<handle_type, typed_facets<Base, Tos...>>)
     operator shared_typed_facets<Base, Tos...>() && noexcept {
         return shared_typed_facets<Base, Tos...>(typed_facets<Base, Tos...>(handle_), std::exchange(control_, nullptr));
     }
 
     template<class Base, class... Tos>
-        requires(handle_type::template is_convertible<Base> && (handle_type::template is_upcastable_or_queryable<Tos> && ...))
-    explicit(!(handle_type::template is_upcastable<Tos> && ...))
+        requires(std::is_constructible_v<typed_facets<Base, Tos...>, handle_type>)
+    explicit(!std::is_convertible_v<handle_type, typed_facets<Base, Tos...>>)
     operator borrowed_typed_facets<Base, Tos...>() const & noexcept {
         return borrowed_typed_facets<Base, Tos...>(typed_facets<Base, Tos...>(handle_), control_);
     }
@@ -292,6 +302,19 @@ struct shared_typed_facets {
         return *this;
     }
 
+    auto handle() const noexcept {
+        return handle_;
+    }
+
+    auto *get() const noexcept {
+        return handle_.get();
+    }
+
+    template<std::size_t K>
+    auto const *vtable_at() const noexcept {
+        return handle_.template vtable_at<K>();
+    }
+
     explicit operator bool() const noexcept {
         return static_cast<bool>(handle_) && control_ != nullptr;
     }
@@ -307,14 +330,6 @@ struct shared_typed_facets {
     template<class Face>
     auto *as() const noexcept {
         return handle_.template as<Face>();
-    }
-
-    auto *get() const noexcept {
-        return handle_.get();
-    }
-
-    auto handle() const noexcept {
-        return handle_;
     }
 };
 

@@ -38,7 +38,7 @@ template<>
 struct direct_methods<IManualRoot> {
     static constexpr std::array<direct_method_t, 1> value = {
         direct_method("root_value", [](facets<IManualRoot> handle) {
-            return fct::get<0>(handle.vtables)->self->root_value(handle.data);
+            return handle.template vtable_at<0>()->self->root_value(handle.get());
         }),
     };
 };
@@ -64,7 +64,7 @@ template<>
 struct direct_methods<IManualReader> {
     static constexpr std::array<direct_method_t, 1> value = {
         direct_method("read", [](facets<IManualReader> handle) {
-            return fct::get<0>(handle.vtables)->self->read(handle.data);
+            return handle.template vtable_at<0>()->self->read(handle.get());
         }),
     };
 };
@@ -90,7 +90,7 @@ template<>
 struct direct_methods<IManualCounter> {
     static constexpr std::array<direct_method_t, 1> value = {
         direct_method("count", [](facets<IManualCounter> handle) {
-            return fct::get<0>(handle.vtables)->self->count(handle.data);
+            return handle.template vtable_at<0>()->self->count(handle.get());
         }),
     };
 };
@@ -180,7 +180,7 @@ template<>
 struct direct_methods<IManualBase> {
     static constexpr std::array<direct_method_t, 1> value = {
         direct_method("base", [](facets<IManualBase> handle) {
-            return fct::get<0>(handle.vtables)->base(handle.data);
+            return handle.template vtable_at<0>()->base(handle.get());
         }),
     };
 };
@@ -251,7 +251,7 @@ template<typename T>
 struct direct_methods<IManualValue<T>> {
     static constexpr std::array<direct_method_t, 1> value = {
         direct_method("value", [](facets<IManualValue<T>> handle) {
-            return fct::get<0>(handle.vtables)->value(handle.data);
+            return handle.template vtable_at<0>()->value(handle.get());
         }),
     };
 };
